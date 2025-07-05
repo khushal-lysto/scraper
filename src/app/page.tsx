@@ -1,103 +1,244 @@
+"use client";
+
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableCaption,
+} from "@/components/ui/table";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/utils";
+
+const tabList = [
+  { value: "Steam", label: "Steam" },
+  { value: "Valorant", label: "Valorant" },
+  { value: "iOS", label: "iOS" },
+  { value: "PSN", label: "PSN" },
+];
+
+const columns = [
+  { key: "seller", label: "Seller" },
+  { key: "price", label: "Price" },
+  { key: "amount", label: "Amount" },
+  { key: "availability", label: "Availability" },
+];
+
+function SortableTable({ data }) {
+  const [sortKey, setSortKey] = useState("seller");
+  const [sortDir, setSortDir] = useState("asc");
+
+  const sortedData = [...data].sort((a, b) => {
+    let aVal = a[sortKey];
+    let bVal = b[sortKey];
+    // Remove $ for price and convert to number
+    if (sortKey === "price") {
+      aVal = Number(aVal.replace("$", ""));
+      bVal = Number(bVal.replace("$", ""));
+    }
+    if (sortKey === "amount") {
+      aVal = Number(aVal);
+      bVal = Number(bVal);
+    }
+    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  return (
+    <Table>
+      <TableCaption>Gift Card Analytics</TableCaption>
+      <TableHeader>
+        <TableRow className="bg-muted/70">
+          {columns.map((col) => (
+            <TableHead key={col.key} className="bg-transparent select-none">
+              <button
+                className="font-medium text-foreground/90 hover:text-primary transition-colors w-full text-left"
+                onClick={() => handleSort(col.key)}
+              >
+                {col.label}
+                {sortKey === col.key ? (
+                  sortDir === "asc" ? (
+                    <ChevronUpIcon className="ml-1 w-4 h-4 inline" />
+                  ) : (
+                    <ChevronDownIcon className="ml-1 w-4 h-4 inline" />
+                  )
+                ) : null}
+              </button>
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sortedData.map((row, i) => (
+          <TableRow key={i}>
+            <TableCell className="font-bold text-primary bg-primary/10 dark:bg-primary/20">
+              {row.seller}
+            </TableCell>
+            <TableCell>{row.price}</TableCell>
+            <TableCell>{row.amount}</TableCell>
+            <TableCell>{row.availability}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [timestamps, setTimestamps] = useState<string[]>([]);
+  const [selectedTimestamp, setSelectedTimestamp] = useState<string>("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    async function fetchTimestamps() {
+      const { data: timestampData, error } = await supabase
+        .from('gift-cards')
+        .select('batch_id')
+        .order('batch_id', { ascending: false });
+
+      if (!error && timestampData && timestampData.length > 0) {
+        const uniqueTimestamps = [...new Set(timestampData.map(row => row.batch_id))];
+        setTimestamps(uniqueTimestamps);
+        setSelectedTimestamp(uniqueTimestamps[0]); // Set to latest timestamp
+      }
+    }
+    fetchTimestamps();
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      if (!selectedTimestamp) return;
+
+      setLoading(true);
+      const { data: rows, error } = await supabase
+        .from('gift-cards')
+        .select('*')
+        .eq('batch_id', selectedTimestamp);
+
+      if (error) {
+        console.error('Error fetching data:', error);
+        setData([]);
+      } else {
+        setData(rows || []);
+      }
+      setLoading(false);
+    }
+    fetchData();
+  }, [selectedTimestamp]);
+
+  // Remove batch_id, id, and card columns
+  const columns = data.length > 0 ? Object.keys(data[0]).filter(col => col !== 'batch_id' && col !== 'id' && col !== 'card') : [];
+
+  return (
+    <div className="min-h-screen w-full flex bg-background">
+      <Tabs defaultValue="Steam" orientation="vertical" className="flex w-full">
+        {/* Sidebar Tabs */}
+        <div className="h-screen fixed left-0 top-0 z-10 flex flex-col items-center justify-start min-w-[180px] border-r bg-muted pt-20 px-2 sm:px-4">
+          <TabsList className="flex flex-col gap-2 w-full bg-transparent shadow-none">
+            {tabList.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} className="w-full justify-start">
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="flex-1 flex flex-col min-h-screen ml-[180px]">
+          {/* Heading Bar */}
+          <header className="w-full h-16 flex items-center px-8 border-b bg-card sticky top-0 z-20">
+            <div className="flex items-center justify-between w-full">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Gift Card Table</h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    {selectedTimestamp || "Select Date"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {timestamps.map((timestamp) => (
+                    <DropdownMenuItem
+                      key={timestamp}
+                      onClick={() => setSelectedTimestamp(timestamp)}
+                    >
+                      {timestamp}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </header>
+          {/* Main Content */}
+          <main className="flex-1 flex flex-col items-start justify-start p-4 sm:p-12">
+            <div className="w-full max-w-5xl">
+              {loading ? (
+                <div>Loading...</div>
+              ) : (
+                tabList.map((tab) => (
+                  <TabsContent key={tab.value} value={tab.value} className="w-full">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr>
+                          {columns.map((col: string) => (
+                            <th key={col} className="border px-4 py-2 bg-gray-100">{col}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(data as any[])
+                          .filter(row => row.card === tab.value)
+                          .sort((a, b) => {
+                            if (a.seller < b.seller) return -1;
+                            if (a.seller > b.seller) return 1;
+                            // If seller is the same, sort by price (as number)
+                            const priceA = Number(a.price);
+                            const priceB = Number(b.price);
+                            return priceA - priceB;
+                          })
+                          .map((row, i) => (
+                            <tr key={i}>
+                              {columns.map((col: string) => (
+                                <td key={col} className="border px-4 py-2">
+                                  {col === 'availability' ? (row[col] ? 'true' : 'false') : row[col]}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </TabsContent>
+                ))
+              )}
+            </div>
+          </main>
+        </div>
+      </Tabs>
     </div>
   );
 }
