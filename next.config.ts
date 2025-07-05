@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  basePath: process.env.NODE_ENV === 'production' ? '/dashboard' : '',
+  basePath: process.env.NODE_ENV === 'production' && process.env.BASE_PATH === 'true' ? '/dashboard' : '',
   distDir: 'out',
 };
 

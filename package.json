@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:local": "BASE_PATH=false next build",
+    "build:prod": "BASE_PATH=true next build",
     "start": "next start",
     "lint": "next lint",
     "export": "next build"

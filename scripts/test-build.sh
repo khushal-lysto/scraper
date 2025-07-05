@@ -11,8 +11,8 @@ echo "📥 Installing dependencies..."
 npm ci
 
 # Build the project
-echo "🔨 Building project..."
-npm run build
+echo "🔨 Building project for local testing..."
+npm run build:local
 
 # Check if build was successful
 if [ -d "out" ]; then

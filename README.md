@@ -50,16 +50,53 @@ This project is configured for automatic deployment to GitHub Pages.
 
 ### Manual Build:
 
-To build the project locally for static export:
+To build the project for different environments:
 
 ```bash
-npm run build
+# For local testing (no base path)
+pnpm run build:local
+
+# For production deployment (with /dashboard base path)
+pnpm run build:prod
+
+# Default build (same as build:local)
+pnpm run build
 ```
 
 The static files will be generated in the `out/` directory.
+
+### Testing Locally:
+
+To test the static build locally:
+
+```bash
+# Option 1: Use the provided script
+./scripts/serve-local.sh
+
+# Option 2: Manual serve
+npx serve out/ -p 3000
+
+# Option 3: Using pnpm
+pnpm dlx serve out/ -p 3000
+```
+
+**Important:** When testing locally, access your site at `http://localhost:3000` (not `/dashboard/`). The `/dashboard/` base path is only used when deployed to GitHub Pages.
+
+### Environment Variables:
+
+For Supabase to work, create a `.env.local` file in your project root:
+
+```bash
+# .env.local
+NEXT_PUBLIC_SUPABASE_ADDRESS=your_supabase_url_here
+NEXT_PUBLIC_SUPABASE_API_KEY=your_supabase_anon_key_here
+```
+
+**Important:** Use your Supabase **anon key** (public key), not the service role key.
 
 ### Important Notes:
 
 - The site will be available at: `https://[your-username].github.io/dashboard/`
 - Make sure your repository is public or you have GitHub Pro for private repository deployment
 - The build process creates a static export, so server-side features won't work
+- For GitHub Pages deployment, you'll need to add the environment variables in your repository settings (Settings → Secrets and variables → Actions)
