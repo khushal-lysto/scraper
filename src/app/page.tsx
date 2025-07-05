@@ -1,16 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  TableCaption,
-} from "@/components/ui/table";
+
 import {
   Tabs,
   TabsList,
@@ -23,7 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/utils";
 
@@ -34,85 +25,12 @@ const tabList = [
   { value: "PSN", label: "PSN" },
 ];
 
-const columns = [
-  { key: "seller", label: "Seller" },
-  { key: "price", label: "Price" },
-  { key: "amount", label: "Amount" },
-  { key: "availability", label: "Availability" },
-];
 
-function SortableTable({ data }) {
-  const [sortKey, setSortKey] = useState("seller");
-  const [sortDir, setSortDir] = useState("asc");
 
-  const sortedData = [...data].sort((a, b) => {
-    let aVal = a[sortKey];
-    let bVal = b[sortKey];
-    // Remove $ for price and convert to number
-    if (sortKey === "price") {
-      aVal = Number(aVal.replace("$", ""));
-      bVal = Number(bVal.replace("$", ""));
-    }
-    if (sortKey === "amount") {
-      aVal = Number(aVal);
-      bVal = Number(bVal);
-    }
-    if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
-    if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
-    return 0;
-  });
 
-  const handleSort = (key) => {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  };
-
-  return (
-    <Table>
-      <TableCaption>Gift Card Analytics</TableCaption>
-      <TableHeader>
-        <TableRow className="bg-muted/70">
-          {columns.map((col) => (
-            <TableHead key={col.key} className="bg-transparent select-none">
-              <button
-                className="font-medium text-foreground/90 hover:text-primary transition-colors w-full text-left"
-                onClick={() => handleSort(col.key)}
-              >
-                {col.label}
-                {sortKey === col.key ? (
-                  sortDir === "asc" ? (
-                    <ChevronUpIcon className="ml-1 w-4 h-4 inline" />
-                  ) : (
-                    <ChevronDownIcon className="ml-1 w-4 h-4 inline" />
-                  )
-                ) : null}
-              </button>
-            </TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sortedData.map((row, i) => (
-          <TableRow key={i}>
-            <TableCell className="font-bold text-primary bg-primary/10 dark:bg-primary/20">
-              {row.seller}
-            </TableCell>
-            <TableCell>{row.price}</TableCell>
-            <TableCell>{row.amount}</TableCell>
-            <TableCell>{row.availability}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
 
 export default function Home() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Record<string, string | number | boolean>[]>([]);
   const [loading, setLoading] = useState(true);
   const [timestamps, setTimestamps] = useState<string[]>([]);
   const [selectedTimestamp, setSelectedTimestamp] = useState<string>("");
@@ -205,13 +123,13 @@ export default function Home() {
                     <table className="w-full border-collapse border border-gray-300">
                       <thead>
                         <tr>
-                          {columns.map((col: string) => (
+                          {columns.map((col) => (
                             <th key={col} className="border px-4 py-2 bg-gray-100">{col}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {(data as any[])
+                        {data
                           .filter(row => row.card === tab.value)
                           .sort((a, b) => {
                             if (a.seller < b.seller) return -1;
@@ -223,9 +141,9 @@ export default function Home() {
                           })
                           .map((row, i) => (
                             <tr key={i}>
-                              {columns.map((col: string) => (
+                              {columns.map((col) => (
                                 <td key={col} className="border px-4 py-2">
-                                  {col === 'availability' ? (row[col] ? 'true' : 'false') : row[col]}
+                                  {col === 'availability' ? (row[col] ? 'true' : 'false') : String(row[col])}
                                 </td>
                               ))}
                             </tr>
