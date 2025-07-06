@@ -37,15 +37,21 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchTimestamps() {
-      const { data: timestampData, error } = await supabase
-        .from('gift-cards')
-        .select('batch_id')
-        .order('batch_id', { ascending: false });
+      try {
+        const { data: timestampData, error } = await supabase
+          .from('gift-cards')
+          .select('batch_id')
+          .order('batch_id', { ascending: false });
 
-      if (!error && timestampData && timestampData.length > 0) {
-        const uniqueTimestamps = [...new Set(timestampData.map(row => row.batch_id))];
-        setTimestamps(uniqueTimestamps);
-        setSelectedTimestamp(uniqueTimestamps[0]); // Set to latest timestamp
+        if (!error && timestampData && timestampData.length > 0) {
+          const uniqueTimestamps = [...new Set(timestampData.map((row: Record<string, unknown>) => row.batch_id as string))] as string[];
+          setTimestamps(uniqueTimestamps);
+          setSelectedTimestamp(uniqueTimestamps[0]); // Set to latest timestamp
+        } else {
+          console.warn('No timestamp data available or error occurred:', error);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch timestamps:', err);
       }
     }
     fetchTimestamps();
@@ -56,16 +62,21 @@ export default function Home() {
       if (!selectedTimestamp) return;
 
       setLoading(true);
-      const { data: rows, error } = await supabase
-        .from('gift-cards')
-        .select('*')
-        .eq('batch_id', selectedTimestamp);
+      try {
+        const { data: rows, error } = await supabase
+          .from('gift-cards')
+          .select('*')
+          .eq('batch_id', selectedTimestamp);
 
-      if (error) {
-        console.error('Error fetching data:', error);
+        if (error) {
+          console.error('Error fetching data:', error);
+          setData([]);
+        } else {
+          setData(rows || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
         setData([]);
-      } else {
-        setData(rows || []);
       }
       setLoading(false);
     }
@@ -116,7 +127,21 @@ export default function Home() {
           <main className="flex-1 flex flex-col items-start justify-start p-4 sm:p-12">
             <div className="w-full max-w-5xl">
               {loading ? (
-                <div>Loading...</div>
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-lg">Loading...</div>
+                </div>
+              ) : data.length === 0 ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="text-lg font-semibold mb-2">No data available</div>
+                    <div className="text-sm text-muted-foreground">
+                      {timestamps.length === 0
+                        ? "Unable to connect to database. Please check your environment variables."
+                        : "No data found for the selected timestamp."
+                      }
+                    </div>
+                  </div>
+                </div>
               ) : (
                 tabList.map((tab) => (
                   <TabsContent key={tab.value} value={tab.value} className="w-full">
