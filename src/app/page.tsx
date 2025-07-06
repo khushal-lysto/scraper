@@ -21,8 +21,16 @@ import { supabase } from "@/lib/utils";
 const tabList = [
   { value: "Steam", label: "Steam" },
   { value: "Valorant", label: "Valorant" },
-  { value: "iOS", label: "iOS" },
+  { value: "Roblox", label: "Roblox" },
+  { value: "MOBA Legends", label: "MOBA Legends" },
+  { value: "Marvel RIvals", label: "Marvel RIvals" },
+  { value: "Xbox", label: "Xbox" },
   { value: "PSN", label: "PSN" },
+  { value: "iOS", label: "iOS" },
+  { value: "Nintendo", label: "Nintendo" },
+  { value: "Crunchyroll", label: "Crunchyroll" },
+  { value: "Genshin Impact", label: "Genshin Impact" },
+  { value: "Honkai Starrail", label: "Honkai Starrail" },
 ];
 
 
@@ -39,6 +47,7 @@ export default function Home() {
   const [sellerFilter, setSellerFilter] = useState<string>("");
   const [sourceFilter, setSourceFilter] = useState<string>("");
   const [amountFilters, setAmountFilters] = useState<Record<string, string>>({});
+  const [availabilityFilter, setAvailabilityFilter] = useState<string>("");
 
   // Unique sellers, sources, and amounts for dropdowns
   const uniqueSellers = useMemo(() => Array.from(new Set(data.map(row => typeof row.seller === 'string' ? row.seller : undefined))).filter((v): v is string => typeof v === 'string' && !!v), [data]);
@@ -132,10 +141,10 @@ export default function Home() {
     <div className="min-h-screen w-full flex bg-background">
       <Tabs value={selectedTab} onValueChange={setSelectedTab} orientation="vertical" className="flex w-full">
         {/* Sidebar Tabs */}
-        <div className="h-screen fixed left-0 top-0 z-10 flex flex-col items-center justify-start min-w-[180px] border-r bg-muted pt-20 px-2 sm:px-4">
+        <div className="h-screen fixed left-0 top-0 z-10 flex flex-col items-center justify-center min-w-[180px] border-r bg-muted px-2 sm:px-4 overflow-y-auto">
           <TabsList className="flex flex-col gap-2 w-full bg-transparent shadow-none">
             {tabList.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="w-full justify-start">
+              <TabsTrigger key={tab.value} value={tab.value} className="w-full justify-start py-3">
                 {tab.label}
               </TabsTrigger>
             ))}
@@ -202,6 +211,7 @@ export default function Home() {
                             .filter(row => !sellerFilter || row.seller === sellerFilter)
                             .filter(row => !sourceFilter || row.source === sourceFilter)
                             .filter(row => !amountFilters[tab.value] || Number(row.amount) === Number(amountFilters[tab.value]))
+                            .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
                             .sort((a, b) => {
                               if (a.seller < b.seller) return -1;
                               if (a.seller > b.seller) return 1;
@@ -270,12 +280,25 @@ export default function Home() {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Availability</label>
+                <select
+                  className="w-full border rounded px-2 py-1"
+                  value={availabilityFilter}
+                  onChange={e => setAvailabilityFilter(e.target.value)}
+                >
+                  <option value="">All</option>
+                  <option value="true">Available</option>
+                  <option value="false">Unavailable</option>
+                </select>
+              </div>
               <button
                 className="mt-2 px-4 py-2 rounded bg-muted text-foreground border hover:bg-muted/70"
                 onClick={() => {
                   setSellerFilter("");
                   setSourceFilter("");
                   setAmountFilters({});
+                  setAvailabilityFilter("");
                 }}
               >
                 Clear Filters
