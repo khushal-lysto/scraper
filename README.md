@@ -96,7 +96,7 @@ NEXT_PUBLIC_SUPABASE_API_KEY=your_supabase_anon_key_here
 
 ### Important Notes:
 
-- The site will be available at: `https://[your-username].github.io/dashboard/`
+- The site will be available at: `https://[your-username].github.io/scraper/`
 - Make sure your repository is public or you have GitHub Pro for private repository deployment
 - The build process creates a static export, so server-side features won't work
 - For GitHub Pages deployment, you'll need to add the environment variables in your repository settings (Settings → Secrets and variables → Actions)

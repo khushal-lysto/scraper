@@ -47,6 +47,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
+      - name: Print Supabase envs
+        run: |
+          echo "SUPABASE_ADDRESS: $NEXT_PUBLIC_SUPABASE_ADDRESS"
+          echo "SUPABASE_API_KEY is set: [${#NEXT_PUBLIC_SUPABASE_API_KEY}]"
+        env:
+          NEXT_PUBLIC_SUPABASE_ADDRESS: ${{ secrets.NEXT_PUBLIC_SUPABASE_ADDRESS }}
+          NEXT_PUBLIC_SUPABASE_API_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_API_KEY }}
+      
       - name: Build with Next.js
         env:
           NEXT_PUBLIC_SUPABASE_ADDRESS: ${{ secrets.NEXT_PUBLIC_SUPABASE_ADDRESS }}

@@ -6,7 +6,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  basePath: process.env.NODE_ENV === 'production' && process.env.BASE_PATH === 'true' ? '/dashboard' : '',
+  // Only use basePath for GitHub Pages deployment, not for local builds
+  basePath: process.env.BASE_PATH === 'true' ? '/scraper' : '',
   distDir: 'out',
 };
 
