@@ -214,8 +214,8 @@ export default function Home() {
               </div>
             </header>
             {/* Main Content */}
-            <main className="flex-1 flex flex-col items-start justify-start p-4 sm:p-12">
-              <div className="w-full max-w-5xl">
+            <main className="flex-1 flex flex-col items-start justify-start p-4 sm:p-12 overflow-hidden">
+              <div className="w-full max-w-5xl h-full flex flex-col">
                 {loading ? (
                   <div className="flex items-center justify-center p-8">
                     <div className="text-lg">Loading...</div>
@@ -234,75 +234,88 @@ export default function Home() {
                   </div>
                 ) : (
                   tabList.map((tab) => (
-                    <TabsContent key={tab.value} value={tab.value} className="w-full">
-                      <table className="w-full border-collapse border border-gray-300">
-                        <thead>
-                          <tr>
-                            {columns.map((col) => (
-                              <th
-                                key={col}
-                                className="border px-4 py-2 bg-gray-100 cursor-pointer hover:bg-gray-200 select-none"
-                                onClick={() => handleSort(col)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span>{col}</span>
-                                  <span className="ml-2 text-sm">{getSortIcon(col)}</span>
-                                </div>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {removeDuplicates(
-                            data
-                              .filter(row => row.card === tab.value)
-                              .filter(row => !sellerFilter || row.seller === sellerFilter)
-                              .filter(row => !sourceFilter || row.source === sourceFilter)
-                              .filter(row => !amountFilters[tab.value] || Number(row.amount) === Number(amountFilters[tab.value]))
-                              .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
-                          )
-                            .sort((a, b) => {
-                              if (!sortColumn) {
-                                // Default sorting: seller first, then price
-                                if (a.seller < b.seller) return -1;
-                                if (a.seller > b.seller) return 1;
-                                const priceA = Number(a.price);
-                                const priceB = Number(b.price);
-                                return priceA - priceB;
-                              }
+                    <TabsContent key={tab.value} value={tab.value} className="w-full h-full flex flex-col">
+                      <div className="h-[calc(100vh-200px)] overflow-hidden border border-gray-300 rounded">
+                        <div className="h-full flex flex-col">
+                          {/* Fixed Header */}
+                          <div className="flex-shrink-0">
+                            <table className="w-full border-collapse table-fixed">
+                              <thead>
+                                <tr>
+                                  {columns.map((col) => (
+                                    <th
+                                      key={col}
+                                      className="border px-4 py-2 bg-gray-100 cursor-pointer hover:bg-gray-200 select-none"
+                                      style={{ width: `${100 / columns.length}%` }}
+                                      onClick={() => handleSort(col)}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span>{col}</span>
+                                        <span className="ml-2 text-sm">{getSortIcon(col)}</span>
+                                      </div>
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                            </table>
+                          </div>
+                          {/* Scrollable Body */}
+                          <div className="flex-1 overflow-y-auto">
+                            <table className="w-full border-collapse table-fixed">
+                              <tbody>
+                                {removeDuplicates(
+                                  data
+                                    .filter(row => row.card === tab.value)
+                                    .filter(row => !sellerFilter || row.seller === sellerFilter)
+                                    .filter(row => !sourceFilter || row.source === sourceFilter)
+                                    .filter(row => !amountFilters[tab.value] || Number(row.amount) === Number(amountFilters[tab.value]))
+                                    .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
+                                )
+                                  .sort((a, b) => {
+                                    if (!sortColumn) {
+                                      // Default sorting: seller first, then price
+                                      if (a.seller < b.seller) return -1;
+                                      if (a.seller > b.seller) return 1;
+                                      const priceA = Number(a.price);
+                                      const priceB = Number(b.price);
+                                      return priceA - priceB;
+                                    }
 
-                              // Custom column sorting
-                              const aValue = a[sortColumn];
-                              const bValue = b[sortColumn];
+                                    // Custom column sorting
+                                    const aValue = a[sortColumn];
+                                    const bValue = b[sortColumn];
 
-                              // Handle different data types
-                              let comparison = 0;
-                              if (typeof aValue === 'number' && typeof bValue === 'number') {
-                                comparison = aValue - bValue;
-                              } else if (typeof aValue === 'string' && typeof bValue === 'string') {
-                                comparison = aValue.localeCompare(bValue);
-                              } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
-                                comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
-                              } else {
-                                // Convert to string for comparison
-                                const aStr = String(aValue || '');
-                                const bStr = String(bValue || '');
-                                comparison = aStr.localeCompare(bStr);
-                              }
+                                    // Handle different data types
+                                    let comparison = 0;
+                                    if (typeof aValue === 'number' && typeof bValue === 'number') {
+                                      comparison = aValue - bValue;
+                                    } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                      comparison = aValue.localeCompare(bValue);
+                                    } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+                                      comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
+                                    } else {
+                                      // Convert to string for comparison
+                                      const aStr = String(aValue || '');
+                                      const bStr = String(bValue || '');
+                                      comparison = aStr.localeCompare(bStr);
+                                    }
 
-                              return sortDirection === 'asc' ? comparison : -comparison;
-                            })
-                            .map((row, i) => (
-                              <tr key={i}>
-                                {columns.map((col) => (
-                                  <td key={col} className="border px-4 py-2">
-                                    {col === 'availability' ? (row[col] ? 'true' : 'false') : String(row[col])}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
+                                    return sortDirection === 'asc' ? comparison : -comparison;
+                                  })
+                                  .map((row, i) => (
+                                    <tr key={i}>
+                                      {columns.map((col) => (
+                                        <td key={col} className="border px-4 py-2" style={{ width: `${100 / columns.length}%` }}>
+                                          {col === 'availability' ? (row[col] ? 'true' : 'false') : String(row[col])}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
                     </TabsContent>
                   ))
                 )}
