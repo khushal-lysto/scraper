@@ -21,7 +21,13 @@ import { supabase } from "@/lib/utils";
 const tabList = [
   { value: "Steam", label: "Steam" },
   { value: "Valorant", label: "Valorant" },
-  { value: "Xbox", label: "Xbox" },
+  {
+    value: "Xbox", label: "Xbox", isDropdown: true, children: [
+      { value: "Xbox Live", label: "Xbox Live" },
+      { value: "Xbox Core", label: "Xbox Core" },
+      { value: "Xbox Ultimate", label: "Xbox Ultimate" },
+    ]
+  },
   { value: "Nintendo", label: "Nintendo" },
   { value: "PSN", label: "PSN" },
   { value: "iOS", label: "iOS" },
@@ -175,6 +181,65 @@ export default function Home() {
     return sortDirection === "asc" ? "↑" : "↓";
   };
 
+  // Utility to convert data to CSV
+  const toCSV = (rows: Record<string, string | number | boolean>[], columns: string[]) => {
+    const escape = (val: string | number | boolean | null | undefined) => {
+      if (val == null) return '';
+      const str = String(val).replace(/"/g, '""');
+      if (str.search(/([",\n])/g) >= 0) return `"${str}"`;
+      return str;
+    };
+    const header = columns.join(",");
+    const body = rows.map(row => columns.map(col => escape(row[col] as string | number | boolean | null | undefined)).join(",")).join("\n");
+    return `${header}\n${body}`;
+  };
+
+  // Download handler
+  const handleDownloadCSV = () => {
+    const filteredRows = removeDuplicates(
+      data
+        .filter(row => row.card === selectedTab)
+        .filter(row => !sellerFilter || row.seller === sellerFilter)
+        .filter(row => !sourceFilter || row.source === sourceFilter)
+        .filter(row => !amountFilters[selectedTab] || Number(row.amount) === Number(amountFilters[selectedTab]))
+        .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
+    ).sort((a, b) => {
+      if (!sortColumn) {
+        if (a.seller < b.seller) return -1;
+        if (a.seller > b.seller) return 1;
+        const priceA = Number(a.price);
+        const priceB = Number(b.price);
+        return priceA - priceB;
+      }
+      const aValue = a[sortColumn];
+      const bValue = b[sortColumn];
+      let comparison = 0;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+        comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
+      } else {
+        const aStr = String(aValue || '');
+        const bStr = String(bValue || '');
+        comparison = aStr.localeCompare(bStr);
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    const csv = toCSV(filteredRows, columns);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const filename = `${selectedTab}-gift-cards.csv`;
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="min-h-screen w-full flex bg-background">
       <Tabs value={selectedTab} onValueChange={setSelectedTab} orientation="vertical" className="flex w-full">
@@ -182,9 +247,30 @@ export default function Home() {
         <div className="h-screen fixed left-0 top-0 z-10 flex flex-col items-center justify-center min-w-[180px] border-r bg-muted px-2 sm:px-4 overflow-y-auto">
           <TabsList className="flex flex-col gap-2 w-full bg-transparent shadow-none">
             {tabList.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="w-full justify-start py-3">
-                {tab.label}
-              </TabsTrigger>
+              tab.isDropdown ? (
+                <DropdownMenu key={tab.value}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-start py-3 h-auto text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground">
+                      {tab.label}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="right" align="start" className="w-48">
+                    {tab.children?.map((child) => (
+                      <DropdownMenuItem
+                        key={child.value}
+                        onClick={() => setSelectedTab(child.value)}
+                        className={selectedTab === child.value ? "bg-muted text-muted-foreground" : "hover:bg-accent hover:text-accent-foreground"}
+                      >
+                        {child.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <TabsTrigger key={tab.value} value={tab.value} className="w-full justify-start py-3 pl-4">
+                  {tab.label}
+                </TabsTrigger>
+              )
             ))}
           </TabsList>
         </div>
@@ -216,6 +302,11 @@ export default function Home() {
             {/* Main Content */}
             <main className="flex-1 flex flex-col items-start justify-start p-4 sm:p-12 overflow-hidden">
               <div className="w-full max-w-5xl h-full flex flex-col">
+                <div className="flex justify-end mb-2">
+                  <Button variant="outline" size="sm" onClick={handleDownloadCSV}>
+                    Download CSV
+                  </Button>
+                </div>
                 {loading ? (
                   <div className="flex items-center justify-center p-8">
                     <div className="text-lg">Loading...</div>
@@ -233,91 +324,196 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  tabList.map((tab) => (
-                    <TabsContent key={tab.value} value={tab.value} className="w-full h-full flex flex-col">
-                      <div className="h-[calc(100vh-200px)] overflow-hidden border border-gray-300 rounded">
-                        <div className="h-full flex flex-col">
-                          {/* Fixed Header */}
-                          <div className="flex-shrink-0">
-                            <table className="w-full border-collapse table-fixed">
-                              <thead>
-                                <tr>
-                                  {columns.map((col) => (
-                                    <th
-                                      key={col}
-                                      className="border px-4 py-2 bg-gray-100 cursor-pointer hover:bg-gray-200 select-none"
-                                      style={{ width: `${100 / columns.length}%` }}
-                                      onClick={() => handleSort(col)}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span>{col}</span>
-                                        <span className="ml-2 text-sm">{getSortIcon(col)}</span>
-                                      </div>
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                            </table>
-                          </div>
-                          {/* Scrollable Body */}
-                          <div className="flex-1 overflow-y-auto">
-                            <table className="w-full border-collapse table-fixed">
-                              <tbody>
-                                {removeDuplicates(
-                                  data
-                                    .filter(row => row.card === tab.value)
-                                    .filter(row => !sellerFilter || row.seller === sellerFilter)
-                                    .filter(row => !sourceFilter || row.source === sourceFilter)
-                                    .filter(row => !amountFilters[tab.value] || Number(row.amount) === Number(amountFilters[tab.value]))
-                                    .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
-                                )
-                                  .sort((a, b) => {
-                                    if (!sortColumn) {
-                                      // Default sorting: seller first, then price
-                                      if (a.seller < b.seller) return -1;
-                                      if (a.seller > b.seller) return 1;
-                                      const priceA = Number(a.price);
-                                      const priceB = Number(b.price);
-                                      return priceA - priceB;
-                                    }
+                  <>
+                    {/* Render regular tabs */}
+                    {tabList.filter(tab => !tab.isDropdown).map((tab) => (
+                      <TabsContent key={tab.value} value={tab.value} className="w-full h-full flex flex-col">
+                        <div className="h-[calc(100vh-200px)] overflow-hidden border border-gray-300 rounded">
+                          <div className="h-full flex flex-col">
+                            {/* Fixed Header */}
+                            <div className="flex-shrink-0">
+                              <table className="w-full border-collapse table-fixed">
+                                <thead>
+                                  <tr>
+                                    {columns.map((col) => (
+                                      <th
+                                        key={col}
+                                        className="border px-4 py-2 bg-gray-100 cursor-pointer hover:bg-gray-200 select-none"
+                                        style={{ width: `${100 / columns.length}%` }}
+                                        onClick={() => handleSort(col)}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span>{col}</span>
+                                          <span className="ml-2 text-sm">{getSortIcon(col)}</span>
+                                        </div>
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                              </table>
+                            </div>
+                            {/* Scrollable Body */}
+                            <div className="flex-1 overflow-y-auto">
+                              <table className="w-full border-collapse table-fixed">
+                                <tbody>
+                                  {removeDuplicates(
+                                    data
+                                      .filter(row => row.card === tab.value)
+                                      .filter(row => !sellerFilter || row.seller === sellerFilter)
+                                      .filter(row => !sourceFilter || row.source === sourceFilter)
+                                      .filter(row => !amountFilters[tab.value] || Number(row.amount) === Number(amountFilters[tab.value]))
+                                      .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
+                                  )
+                                    .sort((a, b) => {
+                                      if (!sortColumn) {
+                                        // Default sorting: seller first, then price
+                                        if (a.seller < b.seller) return -1;
+                                        if (a.seller > b.seller) return 1;
+                                        const priceA = Number(a.price);
+                                        const priceB = Number(b.price);
+                                        return priceA - priceB;
+                                      }
 
-                                    // Custom column sorting
-                                    const aValue = a[sortColumn];
-                                    const bValue = b[sortColumn];
+                                      // Custom column sorting
+                                      const aValue = a[sortColumn];
+                                      const bValue = b[sortColumn];
 
-                                    // Handle different data types
-                                    let comparison = 0;
-                                    if (typeof aValue === 'number' && typeof bValue === 'number') {
-                                      comparison = aValue - bValue;
-                                    } else if (typeof aValue === 'string' && typeof bValue === 'string') {
-                                      comparison = aValue.localeCompare(bValue);
-                                    } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
-                                      comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
-                                    } else {
-                                      // Convert to string for comparison
-                                      const aStr = String(aValue || '');
-                                      const bStr = String(bValue || '');
-                                      comparison = aStr.localeCompare(bStr);
-                                    }
+                                      // Handle different data types
+                                      let comparison = 0;
+                                      if (typeof aValue === 'number' && typeof bValue === 'number') {
+                                        comparison = aValue - bValue;
+                                      } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                        comparison = aValue.localeCompare(bValue);
+                                      } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+                                        comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
+                                      } else {
+                                        // Convert to string for comparison
+                                        const aStr = String(aValue || '');
+                                        const bStr = String(bValue || '');
+                                        comparison = aStr.localeCompare(bStr);
+                                      }
 
-                                    return sortDirection === 'asc' ? comparison : -comparison;
-                                  })
-                                  .map((row, i) => (
-                                    <tr key={i}>
-                                      {columns.map((col) => (
-                                        <td key={col} className="border px-4 py-2" style={{ width: `${100 / columns.length}%` }}>
-                                          {col === 'availability' ? (row[col] ? 'true' : 'false') : String(row[col])}
-                                        </td>
-                                      ))}
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
+                                      return sortDirection === 'asc' ? comparison : -comparison;
+                                    })
+                                    .map((row, i) => (
+                                      <tr key={i}>
+                                        {columns.map((col) => (
+                                          <td key={col} className="border px-4 py-2" style={{ width: `${100 / columns.length}%` }}>
+                                            {col === 'availability' ? (row[col] ? 'true' : 'false') :
+                                              col === 'url' ? (
+                                                row[col] ? (
+                                                  <a href={String(row[col])} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                                    link
+                                                  </a>
+                                                ) : ''
+                                              ) : String(row[col])}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TabsContent>
-                  ))
+                      </TabsContent>
+                    ))}
+                    {/* Render dropdown children */}
+                    {tabList.filter(tab => tab.isDropdown).map((tab) =>
+                      tab.children?.map((child) => (
+                        <TabsContent key={child.value} value={child.value} className="w-full h-full flex flex-col">
+                          <div className="h-[calc(100vh-200px)] overflow-hidden border border-gray-300 rounded">
+                            <div className="h-full flex flex-col">
+                              {/* Fixed Header */}
+                              <div className="flex-shrink-0">
+                                <table className="w-full border-collapse table-fixed">
+                                  <thead>
+                                    <tr>
+                                      {columns.map((col) => (
+                                        <th
+                                          key={col}
+                                          className="border px-4 py-2 bg-gray-100 cursor-pointer hover:bg-gray-200 select-none"
+                                          style={{ width: `${100 / columns.length}%` }}
+                                          onClick={() => handleSort(col)}
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <span>{col}</span>
+                                            <span className="ml-2 text-sm">{getSortIcon(col)}</span>
+                                          </div>
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                </table>
+                              </div>
+                              {/* Scrollable Body */}
+                              <div className="flex-1 overflow-y-auto">
+                                <table className="w-full border-collapse table-fixed">
+                                  <tbody>
+                                    {removeDuplicates(
+                                      data
+                                        .filter(row => row.card === child.value)
+                                        .filter(row => !sellerFilter || row.seller === sellerFilter)
+                                        .filter(row => !sourceFilter || row.source === sourceFilter)
+                                        .filter(row => !amountFilters[child.value] || Number(row.amount) === Number(amountFilters[child.value]))
+                                        .filter(row => availabilityFilter === "" || String(row.availability) === availabilityFilter)
+                                    )
+                                      .sort((a, b) => {
+                                        if (!sortColumn) {
+                                          // Default sorting: seller first, then price
+                                          if (a.seller < b.seller) return -1;
+                                          if (a.seller > b.seller) return 1;
+                                          const priceA = Number(a.price);
+                                          const priceB = Number(b.price);
+                                          return priceA - priceB;
+                                        }
+
+                                        // Custom column sorting
+                                        const aValue = a[sortColumn];
+                                        const bValue = b[sortColumn];
+
+                                        // Handle different data types
+                                        let comparison = 0;
+                                        if (typeof aValue === 'number' && typeof bValue === 'number') {
+                                          comparison = aValue - bValue;
+                                        } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+                                          comparison = aValue.localeCompare(bValue);
+                                        } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+                                          comparison = aValue === bValue ? 0 : aValue ? 1 : -1;
+                                        } else {
+                                          // Convert to string for comparison
+                                          const aStr = String(aValue || '');
+                                          const bStr = String(bValue || '');
+                                          comparison = aStr.localeCompare(bStr);
+                                        }
+
+                                        return sortDirection === 'asc' ? comparison : -comparison;
+                                      })
+                                      .map((row, i) => (
+                                        <tr key={i}>
+                                          {columns.map((col) => (
+                                            <td key={col} className="border px-4 py-2" style={{ width: `${100 / columns.length}%` }}>
+                                              {col === 'availability' ? (row[col] ? 'true' : 'false') :
+                                                col === 'url' ? (
+                                                  row[col] ? (
+                                                    <a href={String(row[col])} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                                                      link
+                                                    </a>
+                                                  ) : ''
+                                                ) : String(row[col])}
+                                            </td>
+                                          ))}
+                                        </tr>
+                                      ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </TabsContent>
+                      ))
+                    )}
+                  </>
                 )}
               </div>
             </main>
